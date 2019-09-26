@@ -26,15 +26,9 @@ class file_gui:
         self.init_dir = init_dir
         self.filenames = []
 
-    def find_dirs(self):
-        self.dirnames.append(filedialog.askopendirectories)
-
-    def find_files(self, msg=None):
-        if not msg:
-            msg = 'Select file'
-        filenames = []
-        filenames.extend(filedialog.askopenfilenames(initialdir = self.init_dir,title = msg,                                               filetypes = (("nifti files","*.nii*"),("mat files", "*.mat"),("json", "*.json"),("all files","*.*"))))
-        self.filenames = filenames # [x for x in file_gui.root.tk.splitlist(filenames)]
+    def find_files(self):
+        self.filenames.append(filedialog.askopenfilenames(initialdir = self.init_dir,title = "Select file",                                               filetypes = (("nifti files","*.nii*"),("mat files", "*.mat"),("all files","*.*"))))
+        self.filenames = list(file_gui.root.tk.splitlist(filenames))
         file_gui.root.destroy()
         return (self.filenames)
 
@@ -45,9 +39,6 @@ class define_dir_structure():
         self.anat_dir=[]
         self.func_dir=[]
 
-    def get_subj_dirs(self):
-        pass
-    
     def get_subj_files(self,files=None):
         if files:
             self.filenames = files
@@ -107,3 +98,4 @@ if __name__ == "__main__":
     test1 = define_dir_structure()
     test1.get_subj_files(files=test.filenames)
     print("Found: {} for anatomical\n{} for functional\n{}".format(test1.filenames, test1.anat_dir, test1.func_dir))
+    

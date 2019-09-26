@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 23 14:13:56 2017
+
+@author: brianne
+"""
+
+#import genius
+import pandas as pd
+import numpy as np
+import glob
+
+f = '/data/dorothy/al*/*summary.txt' # first location of ASL files
+f2 = '/data/brianne/asl_testing/*/*summary.txt' #second location
+ip = r'140.226.70.43' #linux, doesn't work because the key is ecdsa
+
+#fileList = genius.get_remote_files(ip,f)
+
+fileList = glob.glob(r'/home/brianne/asl_testing/*txt')
+cols = ["mask","mean","stdev","max"]
+
+runningAvg = np.empty([])
+n=1
+for file in fileList:
+    subj = open(file,'r')
+    subjData = subj.read().rsplit()
+    subjData = np.array(subjData).reshape(int(len(subjData)/4),4)
+    runningAvg = np.append(runningAvg,subjData)
+    n += 1
+    
+    
+runningAvg = np.array(runningAvg[1:len(runningAvg)]).reshape(int(len(runningAvg)/4),4)
+runningAvg2 = pd.DataFrame(runningAvg,columns=cols).drop(axis=1,labels=["stdev","max"])
+print (runningAvg2.groupby("mask").describe())
+print(n)

@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug  1 13:49:22 2019
+
+@author: brianne
+"""
+# Import local packages
+import plot_results
+import file_gui
+
+import os
+import glob
+import pandas as pd
+  
+
+class analysis_params(plot_result.SummarizeImage):
+
+    def __init__(self):
+        print(dir(plot_result.SummarizeImage))
+        print(dir(self))
+
+    def plot_stats(self):
+        if not os.path.isfile(os.path.join(self.out_dir, self.filename + '.pdf')):
+            self.plot_con()
+            
+    def get_roi_stats(self, rois):
+        # To get the means, maxes, etc. the thresholded (eroded), normalized white matter maps will be resliced to the con dimensions
+        if not self.summary_dict:
+            self.summary_dict = {}
+            
+        for roi in rois:
+            # Then, fslstats will be run with and without the mask to generate the desired summary measures.
+            ans = self.collect_stats(mask=roi)
+            try:
+                ans.stdout.decode("utf-8").strip()
+                self.summary_dict[self.filename] = (ans.stdout.decode("utf-8").strip().split(' ')) # Put the stats in a dictionary for simple, organized transformation to dataframe 
+            except AttributeError as e:
+                print(e)
+                print("Error info: likely didn't have a thresholded mask. Try running preproc_fmri to threshold segmentations.")
+    
+    
+    def build_stat_table(self):
+        df = pd.DataFrame.from_dict(summary_dict).T
+        wm_df = pd.DataFrame.from_dict(wm_dict).T
+        df = df.merge(wm_df, left_index=True, right_index=True)
+        df.columns = ['gm_mean','gm_stdev','gm_min','gm_max','wm_mean','wm_stdev','wm_min','wm_max']
+        df['con'] = ['_'.join(x[4:]) for x in df.index.str.split('_')] # Get the end of the file self.filename
+        df.index = ['_'.join(x[0:4]) for x in df.index.str.split('_')] # Rename the index to only contain the subject info
+        print('Saving stats: ',os.path.join(out_dir,'stats.csv'))
+        df.to_csv(os.path.join(out_dir,'stats.csv'))#build image dictionary
+

@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Aug  6 10:52:52 2019
+
+@author: brianne
+"""
+import os
+import glob
+from nipype.interfaces.io import DataGrabber
+from nipype.interfaces import spm
+from nipype.pipeline.engine import Node, MapNode, Workflow
+
+base_dir = '/data/analysis/brianne/exobk'
+subjs = []
+prelist = glob.glob(os.path.join(base_dir, 'ktl_fp_analysis','fasted_pre','exo*'))
+
+
+for subj in prelist:
+    subj = os.path.basename(subj)
+    name = subj.split("_")[0]
+#    name = '_'.join(subj.split("_")[0:3])
+    subjs.append(name)
+    
+## Couldn't get DataGrabber to work
+#ds = Node(DataGrabber(infields=['sid','con'],outfields=['lvl1']), name = 'datasource')
+#ds.inputs.base_directory = os.path.join(base_dir,'ktl_fp_analysis','fasted_pre')
+#ds.inputs.template = '%s_con000%d.nii'
+#ds.con = [3,5,6,8]
+#ds.sid = subjs
+#ds.inputs.sort_filelist = True
+#
+#file_list=ds.run().outputs
+    
+from nipype import SelectFiles
+
+templates = {'cons': os.path.join(base_dir,'ktl_fp_analysis','fasted_pre','exo*nii')}
+
+sf = Node(SelectFiles(templates, sort_filelist=True),name='selectfiles')    
+    
+    
+twoSamplettest = Node(interface=spm.TwoSampleTTestDesign(),name="twoSamplettest")
+l2estimate = Node(interface=spm.EstimateModel(),name='level2estimate') # equivalent of Model Estimation
+l2conestimate = Node(interface=spm.EstimateContrast(), name="level2conestimate") # equivalent of Contrast Design
+cont1 = ['Group','T',['Exercise > Diet'],[-1, 1]]
+# Add the other contrasts or read them in...
+l2conestimate.inputs.contrasts = [cont1]
+l2conestimate.inputs.group_contrast = True
+
+l2pipeline = Workflow('level2')
+l2pipeline.base_dir = os.path.join(base_dir, 'fp')
+l2pipeline.connect([
+    (sf, twoSamplettest, [('cons','in_files')]),
+    (twoSamplettest,l2estimate, [('spm_mat_file','spm_mat_file')]),
+    (l2estimate,l2conestimate,
+    [('spm_mat_file','spm_mat_file'), ('beta_images','beta_images'),
+    ('residual_image','residual_image')])
+])

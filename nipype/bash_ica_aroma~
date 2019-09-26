@@ -1,0 +1,66 @@
+#!/bin/bash
+
+prog=${0}
+icaA='/home/brianne/tools/ICA-AROMA-master/ICA_AROMA.py'
+if [ -z ${3} ] ; then
+    task='rest'
+else
+    task=${3}
+fi
+echo "Task: $task"   
+tr=2.00
+dn='both'
+
+if [ -z ${1} ] ; then
+    echo "Need a task to process"
+    echo "e.g., ${prog} priming"
+    exit
+  else
+    proj=${1}
+    #home=`ls -d /data/analysis/brianne/${proj}*/pilot_gift_aroma`
+    home=`ls -d /data/images/${proj}`
+    if [ -z ${2} ] ; then 
+    subjs=`ls -d ${home}/*`
+    else
+    subjs=`ls -d ${home}/${2}*`
+    fi
+fi
+
+
+
+for subj in ${subjs} ; do
+    echo ${subj}
+    runs=`ls -d ${subj}*/${task}*`
+    for fDir in  ${runs} ; do
+	outDir=`echo ${fDir}/ica_test_nowarpFile`
+	if [ ! -d "${outDir}" ] ; then
+	    mkdir ${outDir}
+	fi
+
+	check=`ls ${outDir}/denoised*`
+	if [ -z "${check}" ] ; then
+	    rpFile=`ls ${fDir}/rp*txt`
+	    inFilePos=`ls ${fDir}/sw*nii | cut -d. -f1`
+	    declare -a inFile=( ${inFilePos[@]/swmean*/} ) #chops the mean file out, but leaves the directory... appears to run okay, but may be an issue in the future?
+	    #echo "Used to be: ${inFilePos[@]}"
+	    #echo "Now: ${inFile[@]}"
+	    maskFile=`ls ${fDir}/*brain_mask*`
+	    
+	    if [ -z "${maskFile}" ] ; then
+		echo "BETting brain in ${fDir}"
+		meanImg=`ls ${fDir}/swmean*nii`
+		echo /usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m
+		/usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m
+		maskFile=`ls ${fDir}/*brain_mask*`
+	    fi
+	    #warpFile=`ls ${subj}/t1/y_*nii`
+	    
+           # cmd=`echo ${icaA} -tr ${tr} -den ${dn} -i ${inFile}.nii -mc ${rpFile} -w ${warpFile} -o ${outDir} -m ${maskFile}`
+	    cmd=`echo ${icaA} -tr ${tr} -den ${dn} -i ${inFile}.nii -mc ${rpFile} -o ${outDir}` # -w ${warpFile}
+	    echo $cmd
+	    ${cmd}
+	else
+	    echo "Found denoised file: ${subj}."
+	fi
+    done
+done

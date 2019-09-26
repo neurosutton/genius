@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Feb  2 16:48:21 2018
+
+@author: brianne
+"""
+
+import numpy as np
+from nipy import load_image, save_image
+from nilearn import image
+from nilearn.plotting import plot_roi
+from nilearn.masking import apply_mask
+from nilearn.input_data import NiftiMapsMasker as nmm
+import matplotlib.pyplot as plt
+from scipy import signal
+
+#Locate the files
+analysisDir = r'/data/analysis/brianne/asdx_2018/pilot_data'
+origDir = r'/data/images'
+
+subjList = [ 'x001', 'x002','221', '231', '248', '274']
+s=1
+for subj in subjList:
+    #Uncorrected
+    raw_img = image.load_img((analysisDir + '/pilot_gift/*'+ subj +'/sw*nii'))
+    #AROMA-corrected
+    aroma_img = image.load_img(analysisDir + '/pilot_gift_aroma/*' + subj + '/ica_test_nowarpFile/denoised_func_data_nonaggr.nii')
+    #GIFT-corrected
+    gift_img = image.load_img(analysisDir + '/pilot_gift/Sub_00' + str(s) + '/1/R_s*nii')
+    #wm mask
+    wm_mask = image.load_img(origDir + '/*/*' + subj + '*/t1/mwc2*')
+    s+=1
+    #print('{}:\nRaw - {} \nAroma - {} \nGIFT - {}\nWM - {}\n'.format(subj,len(raw_img), len(aroma_img),len(gift_img), len(wm_mask)))
+    imgDict = {0:"raw",1:"aroma",2:"gift"}
+    input_imgs = [raw_img, aroma_img, gift_img]
+    for j, input_img in enumerate(input_imgs):
+        dn_type = imgDict.get(j)
+        print('Average white matter signal from {} after denoising by {} \n'.format(subj, dn_type))
+        wm_mask = image.math_img('img > .5', img=image.resample_to_img(wm_mask,input_img))
+        masked_data = apply_mask(input_img,wm_mask)
+        masked_data = signal.detrend(masked_data)
+        #print(masked_data.mean(axis=0, keepdims=True))
+        plt.plot(range(1,301),masked_data.mean(axis=1, keepdims=True))
+        plt.xlabel('TR')
+        plt.ylabel('intensity')
+        plt.show()
+        
+        
+        #avg_timecourse = 
