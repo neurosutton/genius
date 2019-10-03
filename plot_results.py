@@ -129,7 +129,7 @@ if study == 'exobk':
     fs=['11','12','13']
     output_dir = '/Volumes/bk/data/analysis/brianne/exobk/fp'
 elif study == 'priming':
-    first_level_cons = ['0001'] #, '0003', '0004','0005','0008']
+    first_level_cons = ['0001', '0003', '0004','0005','0008']
     ts = ['0001','0004', '0009','0011']
     #fs=['007','008','009','010','013','014']
     output_dir='/Volumes/bk/data/analysis/brianne/priming/food_pics'
