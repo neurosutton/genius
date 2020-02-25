@@ -10,15 +10,17 @@ rv = (3,7)
 if not sys.version_info[0] >= rv[0] and sys.version.info[1] >= rv[1]:
     raise Exception("Must be using at least Python 3.7")
     
-study = 'priming'
+study = 'wlm'
 
 import matplotlib.pyplot as plt
 import glob
 import os
 import subprocess
-from nilearn.plotting import plot_stat_map
+from nilearn.plotting import plot_stat_map, plot_img
+from nilearn.image import load_img, index_img
 import nipype.interfaces.spm.utils as spmu
 import file_gui # Local script calling Tkinter
+from pathlib import Path
 
 
 mask_dict = {'mwc2' : ['white matter','wm'], 'mwc1' : ['gray matter','gm']}  
@@ -28,8 +30,9 @@ class SummarizeImage:
         pass
 
     def img_info(self, img, output_dir=None):
-        self.img = img
-        self.filename  = '_'.join(self.img.split('.')[0].split('/')[-3:])
+        self.img = os.fspath(img)
+        self.filename  = '_'.join(''.join(self.img.split('.')[:-1]).split('/')[-6:])
+        #self.filename  = '_'.join(''.join(self.img.split('.')[:-1]).split('/')[-3:])
         self.subj_dir = os.path.dirname(self.img) # Overall directory for organizing the subject's files
         self.fsl_file = os.path.join(self.subj_dir, 'fsl_' + self.filename) # New self.filename  , so that SPM second-cons don't get confused with the zeroes outside the brain, instead of NaNs
         if not output_dir:
@@ -57,13 +60,32 @@ class SummarizeImage:
         coreg.run() # Throwing error, b/c mimicking bash?
 
 
-    def plot_con(self):
+    def plot_con(self, bkg_img=False):
         #Time intensive step of plotting the axial mosaic, if it has not already been plotted
         print('Plotting ' + self.filename  )
-        plot_stat_map(self.img, title=self.filename  , cut_coords=[-30, -15, -7, 2, 10, 25, 35, 45], display_mode='z', draw_cross=False, colorbar=True, black_bg=True, threshold=2.3)
+        plot_stat_map(self.img, title=self.filename , bg_img=bkg_img, cut_coords=[-30, -15, -7, 2, 10, 25, 35, 45], display_mode='z', draw_cross=False, colorbar=True, black_bg=True, threshold=2.3)
         plt.savefig(os.path.join(self.out_dir, self.filename   + '.pdf'),facecolor='k',edgecolor='k', str='pdf')
         plt.close()
-
+        
+    def plot_individ_img(self,bkg_img=False):
+        #Time intensive step of plotting the axial mosaic, if it has not already been plotted
+        print('Plotting ' + self.filename  )
+        try:
+            input_img = index_img(self.img,1)
+        except:  #DimensionError
+            input_img = self.img
+        plot_stat_map(input_img, title=self.filename, bg_img=bkg_img, cut_coords=[74, 70, 66, 50, 25], display_mode='y', draw_cross=False, colorbar=True, black_bg=True, threshold=150)
+        plt.savefig(os.path.join(self.out_dir, self.filename   + '_' + ''.join(os.path.basename(bkg_img).split('.')[0]) + '_cor.pdf'),facecolor='k',edgecolor='k', str='pdf')
+        plt.close() 
+        
+        plot_stat_map(input_img, title=self.filename, bg_img=bkg_img, cut_coords=[-50, -25, 0, 25, 50], display_mode='x', draw_cross=False, colorbar=True, black_bg=True, threshold=100)
+        plt.savefig(os.path.join(self.out_dir, self.filename   + '_' + ''.join(os.path.basename(bkg_img).split('.')[0]) + '_sag.pdf'),facecolor='k',edgecolor='k', str='pdf')
+        plt.close() 
+        
+        plot_stat_map(input_img, title=self.filename , bg_img=bkg_img, cut_coords=[0, -40, -60, -70, -80, -85], display_mode='y', draw_cross=False, colorbar=True, black_bg=True, threshold=150)
+        plt.savefig(os.path.join(self.out_dir, self.filename   + '_' + ''.join(os.path.basename(bkg_img).split('.')[0]) + '_cor2.pdf'),facecolor='k',edgecolor='k', str='pdf')
+        plt.close() 
+        
     def collect_stats(self,**kwargs):
         print('Collecting stats: ' + self.filename)
 
@@ -134,25 +156,39 @@ elif study == 'priming':
     #fs=['007','008','009','010','013','014']
     output_dir='/Volumes/bk/data/analysis/brianne/priming/food_pics'
     
-for first_level in first_level_cons:
-    imgs = []
-    try:
-        for t in ts:
-            imgs = imgs + glob.glob(os.path.join(output_dir,'*', '*'+first_level+'*','*spmT*'+t+'.nii'), recursive=True)
-    except NameError:
-         print('No T contrasts defined.')            
-
-    try:
-        for f in fs:
-            imgs = imgs + glob.glob(os.path.join(output_dir,'*', '*'+first_level+'*','*spmT*'+t+'.nii'), recursive=True)  
-     #       imgs = imgs + glob.glob('/data/analysis/brianne/exobk/fp/con'+first_level+'/*/*spm?_0'+con+'.nii')
-    except NameError:
-         print('No F contrasts defined.')
-
-    for img in imgs:
-        processing = SummarizeImage()
-        processing.img_info(img,output_dir=output_dir)
-
-        if not os.path.isfile(os.path.join(processing.out_dir, processing.filename + '.pdf')):
-            processing.plot_con()
+if study in ['exobk','priming']:
+    for first_level in first_level_cons:
+        imgs = []
+        try:
+            for t in ts:
+                imgs = imgs + glob.glob(os.path.join(output_dir,'*', '*'+first_level+'*','*spmT*'+t+'.nii'), recursive=True)
+        except NameError:
+             print('No T contrasts defined.')            
     
+        try:
+            for f in fs:
+                imgs = imgs + glob.glob(os.path.join(output_dir,'*', '*'+first_level+'*','*spmT*'+t+'.nii'), recursive=True)  
+         #       imgs = imgs + glob.glob('/data/analysis/brianne/exobk/fp/con'+first_level+'/*/*spm?_0'+con+'.nii')
+        except NameError:
+             print('No F contrasts defined.')
+    
+        for img in imgs:
+            processing = SummarizeImage()
+            processing.img_info(img,output_dir=output_dir)
+    
+            if not os.path.isfile(os.path.join(processing.out_dir, processing.filename + '.pdf')):
+                processing.plot_con()    
+else:
+    #imgs = sorted(Path('/data/analysis/brianne/wlm/fp/WLM014/preproc/WLM014').rglob('*/_frac_0.6/*_1/**/w*brain.nii'))
+    imgs = sorted(Path('/data/analysis/brianne/wlm/fp/WLM017/preproc/WLM017').rglob('**/w*.nii'))
+    #imgs = sorted(Path('/data/images/exobk').rglob('e*1_ex/fp_run1/wexo*.nii'))
+    bkg_imgs = [#'/usr/local/MATLAB/tools/spm12/canonical/avg152T1.nii',
+                '/usr/local/MATLAB/tools/spm12/canonical/avg305T1.nii']
+    output_dir = '/data/analysis/brianne/wlm/fp/check_norm'
+    for img in imgs:
+        processing=SummarizeImage()
+        processing.img_info(img,output_dir=output_dir)
+    
+        if not os.path.isfile(os.path.join(processing.out_dir, processing.filename + '.pdf')):
+            for bkg_img in bkg_imgs:
+              processing.plot_individ_img(bkg_img)
