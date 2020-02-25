@@ -120,12 +120,15 @@ def make_fd_matrix(rp_matrix, radius=50.0):
     radius    -- For rotational displacement calculations. Default = 50.0 (mm)
     """
     fd_matrix = np.zeros(shape=(rp_matrix.shape[0], 7))
-    for i in range(1, len(rp_matrix)):
-        for j in range(0, 3):
-            fd_matrix[i][j] = rp_matrix[i][j] - rp_matrix[i - 1][j]
-        for j in range(3, 6):
-            fd_matrix[i][j] = (rp_matrix[i][j] - rp_matrix[i - 1][j]) * radius
-        fd_matrix[i][6] = sum(abs(fd_matrix[i]))
+    if len(rp_matrix) > 100:
+        for i in range(1, len(rp_matrix)):
+            for j in range(0, 3):
+                fd_matrix[i][j] = rp_matrix[i][j] - rp_matrix[i - 1][j]
+            for j in range(3, 6):
+                fd_matrix[i][j] = (rp_matrix[i][j] - rp_matrix[i - 1][j]) * radius
+            fd_matrix[i][6] = sum(abs(fd_matrix[i]))
+    else:
+        fd_matrix = np.array([[0],[0]])
     return fd_matrix
 
 
@@ -163,82 +166,93 @@ class Motion(object):
         self.run = run
         self.rp_matrix = rp_matrix
         self.fd_matrix = make_fd_matrix(self.rp_matrix)
-        self.fd_mean = mean_fd(self.fd_matrix)
+        self.valid = 1
+        if self.fd_matrix.shape[1] <= 5:
+            print('Not enough volumes: {}'.format(self.subject))
+            self.valid = 0
+        else:
+            self.fd_mean = mean_fd(self.fd_matrix)
 
     def high_fd_frames(self, threshold=0.5):
         """Return array containing location of FD>*threshold* frames."""
-        return np.where(self.fd_matrix[:, 6] > threshold)[0]
+        if self.valid == 1:
+            return np.where(self.fd_matrix[:, 6] > threshold)[0]
 
     def max_rotation(self):
         """Return maximum rotational motion value for graphing."""
-        maxr = 0
-        for i in range(3, 6):
-            high = max(abs(n) for n in self.rp_matrix[:, i])
-            if high > maxr:
-                maxr = high
-        return maxr
+        if self.valid == 1:
+            maxr = 0
+            for i in range(3, 6):
+                high = max(abs(n) for n in self.rp_matrix[:, i])
+                if high > maxr:
+                    maxr = high
+            return maxr
 
     def max_translation(self):
         """Return maximum translational motion value for graphing."""
-        maxt = 0
-        for i in range(0, 3):
-            high = max(abs(n) for n in self.rp_matrix[:, i])
-            if high > maxt:
-                maxt = high
-        return maxt
+        if self.valid == 1:
+            maxt = 0
+            for i in range(0, 3):
+                high = max(abs(n) for n in self.rp_matrix[:, i])
+                if high > maxt:
+                    maxt = high
+            return maxt
 
     def plot_motion_translational(self, ax=None, show=False, maxt=2.0):
         """Return figure containing plot of x, y, and z motion."""
-        if ax is None:
-            ax = plt.gca()
-        f = list(range(1, len(self.rp_matrix)+1))
-        ax.plot(f, self.rp_matrix[:, 0:3], linewidth=0.75)
-        ax.set_title('Translational Movement', fontsize=10)
-        ax.legend(['x', 'y', 'z'])
-        ax.set_ylabel('Movement (mm)', fontsize=8)
-        ax.set_xlabel('Frames (#, in sequence)', fontsize=8)
-        if(self.max_translation() < maxt):
-            ax.set_ylim([-maxt, maxt])
-        else:
-            for axis in ['top', 'bottom', 'left', 'right']:
-                ax.spines[axis].set_linewidth(1.5)
-                ax.spines[axis].set_color('red')
-        if show:
-            plt.show()
-        return ax
+        if self.valid == 1:
+            if ax is None:
+                ax = plt.gca()
+            f = list(range(1, len(self.rp_matrix)+1))
+            ax.plot(f, self.rp_matrix[:, 0:3], linewidth=0.75)
+            ax.set_title('Translational Movement', fontsize=10)
+            ax.legend(['x', 'y', 'z'])
+            ax.set_ylabel('Movement (mm)', fontsize=8)
+            ax.set_xlabel('Frames (#, in sequence)', fontsize=8)
+            if(self.max_translation() < maxt):
+                ax.set_ylim([-maxt, maxt])
+            else:
+                for axis in ['top', 'bottom', 'left', 'right']:
+                    ax.spines[axis].set_linewidth(1.5)
+                    ax.spines[axis].set_color('red')
+            if show:
+                plt.show()
+            return ax
 
     def plot_motion_rotational(self, ax=None, show=False, maxr=0.05):
         """Return figure containing plot of x, y, and z motion."""
-        if ax is None:
-            ax = plt.gca()
-        f = list(range(1, len(self.rp_matrix)+1))
-        ax.plot(f, self.rp_matrix[:, 3:6], linewidth=0.75)
-        ax.set_title('Rotational Movement', fontsize=10)
-        ax.legend(['pitch', 'roll', 'yaw'])
-        ax.set_ylabel('Rotation (rads)', fontsize=8)
-        ax.set_xlabel('Frames (#, in sequence)', fontsize=8)
-        if(self.max_rotation() < maxr):
-            ax.set_ylim([-maxr, maxr])
-        else:
-            for axis in ['top', 'bottom', 'left', 'right']:
-                ax.spines[axis].set_linewidth(1.5)
-                ax.spines[axis].set_color('red')
-        if show:
-            plt.show()
-        return ax
+        if self.valid == 1:
+            if ax is None:
+                ax = plt.gca()
+            f = list(range(1, len(self.rp_matrix)+1))
+            ax.plot(f, self.rp_matrix[:, 3:6], linewidth=0.75)
+            ax.set_title('Rotational Movement', fontsize=10)
+            ax.legend(['pitch', 'roll', 'yaw'])
+            ax.set_ylabel('Rotation (rads)', fontsize=8)
+            ax.set_xlabel('Frames (#, in sequence)', fontsize=8)
+            if(self.max_rotation() < maxr):
+                ax.set_ylim([-maxr, maxr])
+            else:
+                for axis in ['top', 'bottom', 'left', 'right']:
+                    ax.spines[axis].set_linewidth(1.5)
+                    ax.spines[axis].set_color('red')
+            if show:
+                plt.show()
+            return ax
 
     def plot_motion(self, show=False, maxt=2.0, maxr=0.1):
         """Return figure containing two plots with all six motion params."""
-        plt.style.use('seaborn-deep')
-        f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
-        f.suptitle('%s [%s]: Subject Motion' % (self.subject, self.run),
-                   fontsize=12, fontweight='bold')
-        self.plot_motion_translational(ax1, maxt=maxt)
-        self.plot_motion_rotational(ax2, maxr=maxr)
-        plt.xlabel('Frames (#, in sequence)', fontsize=8)
-        if show:
-            plt.show()
-        return f
+        if self.valid == 1:
+            plt.style.use('seaborn-deep')
+            f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
+            f.suptitle('%s [%s]: Subject Motion' % (self.subject, self.run),
+                       fontsize=12, fontweight='bold')
+            self.plot_motion_translational(ax1, maxt=maxt)
+            self.plot_motion_rotational(ax2, maxr=maxr)
+            plt.xlabel('Frames (#, in sequence)', fontsize=8)
+            if show:
+                plt.show()
+            return f
 
 
 class StudyMotion(object):
@@ -338,9 +352,9 @@ class StudyMotion(object):
                 elif motion.run in runs:
                     subject_runs.append(motion)
         if len(subject_runs) == 0:
-            raise ValueError('No runs found for subject: %s', subject)
+            raise ValueError('No runs found for subject: {}'.format(subject))
         fig = plt.figure(figsize=(8, 11))
-        fig.suptitle('%s: Subject Motion' % (subject),
+        fig.suptitle('{}: Subject Motion'.format(subject),
                      fontsize=12, fontweight='bold')
         outer = gs.GridSpec(int(math.ceil(len(subject_runs)/2)), 2,
                             wspace=0.2, hspace=0.3)
@@ -386,7 +400,7 @@ if __name__ == "__main__":
     rpt = StudyMotion(src,res)
     #rpt.plot_fd_by_run()
     #rpt.plot_fd_spikes_by_run()
-    subjs = glob.glob(os.path.join(src,'exo20*','fp_run?'))
+    subjs = glob.glob(os.path.join(src,'exo20*','fp'))
     with PdfPages(op.join(src,('rps.pdf'))) as pdf:
         for subj in subjs:
             try:
