@@ -5,3 +5,8 @@
 art*
 x_*
 *~
+pyscript_imagecalc.m
+*.out
+__pycache__/imcalc.cpython-37.pyc
+mc_spm2afni
+multipleCompCorr_spm2afni
