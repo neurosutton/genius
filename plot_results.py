@@ -10,7 +10,7 @@ rv = (3,7)
 if not sys.version_info[0] >= rv[0] and sys.version.info[1] >= rv[1]:
     raise Exception("Must be using at least Python 3.7")
     
-study = 'wlm'
+study = 'awesome'
 
 import matplotlib.pyplot as plt
 import glob

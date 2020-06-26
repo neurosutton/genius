@@ -400,7 +400,7 @@ if __name__ == "__main__":
     rpt = StudyMotion(src,res)
     #rpt.plot_fd_by_run()
     #rpt.plot_fd_spikes_by_run()
-    subjs = glob.glob(os.path.join(src,'exo20*','fp'))
+    subjs = glob.glob(os.path.join(src,'exo*','fp'))
     with PdfPages(op.join(src,('rps.pdf'))) as pdf:
         for subj in subjs:
             try:
